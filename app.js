@@ -1,6 +1,6 @@
 require("dotenv").config();
 require("./config/database").connect();
-const bcrypt = require('bcrypt');
+// const bcrypt = require('bcrypt');
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
 
@@ -15,6 +15,7 @@ module.exports = app;
 
 // importing user context
 const User = require("./model/user");
+const { findOneAndUpdate } = require("./model/user");
 // const auth = require("./middleware/auth");
 
 app.post("/users", async (req, res) => {
@@ -27,18 +28,62 @@ app.post("/users", async (req, res) => {
   }
 })
 
+app.get("/user/:id", async (req, res) => {
+  // console.log(req.params.id)
+  try {
+    const user = await User.findById(req.params.id)
+    res.header('Access-Control-Allow-Headers', "*");
+    res.status(200).json(user);
+  } catch(err) {
+    console.log(err)
+  }
+})
+
+app.put("/user/:id/edit", (req, res) => {
+  const { first_name, last_name, role, email, password } = req.body;
+  const user_updaed = User.findOneAndUpdate(
+    { _id : req.params.id},
+    { 
+      $set: {
+        first_name,
+        last_name,
+        role,
+        email,
+        password,
+      }
+    },
+      {
+        upsert: true
+      }
+  ).then(result => {
+    res.json('success')
+  })
+})
+
+app.delete('/user/:id/delete', (req, res) => {
+  try {
+    User.deleteOne(
+      {_id: req.params.id }
+    ).then(result => {
+      res.json('deleted')
+    })
+  } catch(err) {
+    console.log(err)
+  }
+})
+
 app.post("/user/add", async (req, res) => {
   try {
     const { first_name, last_name, role, email, password } = req.body;
 
-    encryptedPassword = await bcrypt.hash(password, 10);
+    // encryptedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       first_name,
       last_name,
       role,
       email: email.toLowerCase(),
-      password: encryptedPassword,
+      password,
     })
     res.header('Access-Control-Allow-Headers', "*");
     res.status(201).json(user);
