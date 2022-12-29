@@ -18,11 +18,31 @@ const User = require("./model/user");
 const { findOneAndUpdate } = require("./model/user");
 // const auth = require("./middleware/auth");
 
-app.post("/users", async (req, res) => {
+app.get("/users", async (req, res) => {
   try {
     const user = await User.find();
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     res.header('Access-Control-Allow-Headers', "*");
     res.status(200).json(user);
+  } catch {
+    console.error(res)
+  }
+})
+
+app.get("/users_batch", async (req, res) => {
+  try {
+    const user = await User.find()
+    .limit(req.query.count)
+    .skip((req.query.current_page -1) * req.query.count);
+    const allUsers = await User.find();
+    const response = {};
+    response.user = user;
+    response.totalPages = (allUsers.length % req.query.count > 0) ? 
+    ((allUsers.length / req.query.count) + 1) :
+    (allUsers.length / req.query.count) ;
+    res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+    res.header('Access-Control-Allow-Headers', "*");
+    res.status(200).json(response);
   } catch {
     console.error(res)
   }
