@@ -31,15 +31,29 @@ app.get("/users", async (req, res) => {
 
 app.get("/users_batch", async (req, res) => {
   try {
-    const user = await User.find()
+
+    // Fetching sorting variables from query
+    const sortField = (req.query.sort_field) ? req.query.sort_field : '_id';
+    const sortDirect = (req.query.sort_direct) ? req.query.sort_direct : '1';
+    const sortCond = {};
+    sortCond[sortField] = sortDirect;
+    console.log(sortCond);
+
+    const user = await User.find({})
+    .sort(sortCond)
     .limit(req.query.count)
-    .skip((req.query.current_page -1) * req.query.count);
+    .skip((req.query.current_page -1) * req.query.count)
+    ;
+
     const allUsers = await User.find();
+
     const response = {};
     response.user = user;
+
     response.totalPages = (allUsers.length % req.query.count > 0) ? 
     ((allUsers.length / req.query.count) + 1) :
     (allUsers.length / req.query.count) ;
+
     res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
     res.header('Access-Control-Allow-Headers', "*");
     res.status(200).json(response);
