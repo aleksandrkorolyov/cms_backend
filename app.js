@@ -29,6 +29,21 @@ app.get("/users", async (req, res) => {
   }
 })
 
+app.get("/user_search", async (req, res) => {
+  try{
+    const search_name = req.query.search_name;
+    const user = await User.find({'first_name': { $regex: search_name} });
+
+    const response = {};
+    response.user = user;
+    response.totalPages = 1;
+
+    res.status(200).json(response);
+  } catch {
+
+  }
+})
+
 app.get("/users_batch", async (req, res) => {
   try {
 
