@@ -77,9 +77,19 @@ app.get("/users_batch", async (req, res) => {
 })
 
 app.get("/user/:id", async (req, res) => {
-  // console.log(req.params.id)
   try {
     const user = await User.findById(req.params.id)
+    res.header('Access-Control-Allow-Headers', "*");
+    res.status(200).json(user);
+  } catch(err) {
+    console.log(err)
+  }
+})
+
+app.get("/search_user_by_mail", async(req, res) => {
+  try {
+    const searchName = req.query.email;
+    const user = await User.find({'email': searchName });
     res.header('Access-Control-Allow-Headers', "*");
     res.status(200).json(user);
   } catch(err) {
