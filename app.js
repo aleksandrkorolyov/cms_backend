@@ -1,6 +1,6 @@
 require("dotenv").config();
 require("./config/database").connect();
-// const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt');
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
 
@@ -134,19 +134,51 @@ app.post("/user/add", async (req, res) => {
   try {
     const { first_name, last_name, role, email, password } = req.body;
 
-    // encryptedPassword = await bcrypt.hash(password, 10);
+    encryptedPassword = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       first_name,
       last_name,
       role,
       email: email.toLowerCase(),
-      password,
+      password: encryptedPassword,
     })
     res.header('Access-Control-Allow-Headers', "*");
     res.status(201).json(user);
   } catch(err) {
     console.log(err)
+  }
+})
+
+app.post("/user/login", async (req, res) => {
+  try {
+    const {email, password} = req.body;
+
+    // Validate user input
+    if (!(email && password)) {
+      res.status(400).send("All input is required");
+    }
+
+    // Validate if user exist in our database
+    const user = await User.findOne({ email });
+
+    if(user && (await bcrypt.compare(password, user.password))) {
+      const token = jwt.sign(
+        {user_id: user._id, email},
+        process.env.TOKEN_KEY,
+        {
+          expiresIn: "2h",
+        }
+      )
+
+      // save user token
+      user.token = token;
+      res.status(200).json(user);
+    } else {
+      res.status(400).send("Invalid Credentials");
+    }
+  } catch(err) {
+    console.log(err);
   }
 })
 
