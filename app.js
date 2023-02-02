@@ -1,12 +1,15 @@
 require("dotenv").config();
 require("./config/database").connect();
-// const bcrypt = require('bcrypt');
+const bcrypt = require('bcrypt');
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+
+const config = process.env;
 
 const express = require("express");
 
 const app = express();
+const auth = require("./middleware/auth")
 
 app.use(express.json());
 app.use(cors());
@@ -16,9 +19,34 @@ module.exports = app;
 // importing user context
 const User = require("./model/user");
 const { findOneAndUpdate } = require("./model/user");
-// const auth = require("./middleware/auth");
 
-app.get("/users", async (req, res) => {
+async function isAdmin(token) {
+
+  const decoded = jwt.verify(token, config.TOKEN_KEY);
+  const userMail = decoded.email;
+
+  const currentUser = await User.findOne({ email: userMail });
+
+  if(currentUser.role === 'admin') {
+    return(true);
+  } else {
+    return(false);
+  }
+}
+
+app.get("/get_user_role", async (req, res) => {
+    try {
+      const token = req.query.token;
+      const isCurrentUserAdmin = await isAdmin(token);
+      const response = {};
+      response.isAdmin = isCurrentUserAdmin;
+      res.status(200).json(response);
+    } catch(err) {
+      console.error(res)
+    }
+})
+
+app.get("/users", auth, async (req, res) => {
   try {
     const user = await User.find();
     res.set('Access-Control-Allow-Origin', 'http://localhost:3000');
@@ -97,9 +125,19 @@ app.get("/search_user_by_mail", async(req, res) => {
   }
 })
 
-app.put("/user/:id/edit", (req, res) => {
+app.put("/user/:id/edit", auth, async (req, res) => {
   const { first_name, last_name, role, email, password } = req.body;
-  const user_updaed = User.findOneAndUpdate(
+
+  const token = req.body.token || req.query.token || req.headers["x-access-token"];
+
+  const isCurrentAdmin = await isAdmin(token)
+
+    if(isCurrentAdmin !== true) {
+      res.status(401).send('Not allowed');
+      return;
+    }
+
+  const user_updated = User.findOneAndUpdate(
     { _id : req.params.id},
     { 
       $set: {
@@ -118,8 +156,18 @@ app.put("/user/:id/edit", (req, res) => {
   })
 })
 
-app.delete('/user/:id/delete', (req, res) => {
+app.delete('/user/:id/delete', auth, async (req, res) => {
   try {
+
+    const token = req.body.token || req.query.token || req.headers["x-access-token"];
+
+    const isCurrentAdmin = await isAdmin(token)
+
+    if(isCurrentAdmin !== true) {
+      res.status(401).send('Not allowed');
+      return;
+    }
+
     User.deleteOne(
       {_id: req.params.id }
     ).then(result => {
@@ -130,23 +178,66 @@ app.delete('/user/:id/delete', (req, res) => {
   }
 })
 
-app.post("/user/add", async (req, res) => {
+app.post("/user/add", auth, async (req, res) => {
   try {
-    const { first_name, last_name, role, email, password } = req.body;
+    const { first_name, last_name, role, email, password} = req.body;
 
-    // encryptedPassword = await bcrypt.hash(password, 10);
+    const token = req.body.token || req.query.token || req.headers["x-access-token"];
+
+    encryptedPassword = await bcrypt.hash(password, 10);
+
+    const isCurrentAdmin = await isAdmin(token);
+
+    if(isCurrentAdmin !== true) {
+      res.status(401).send('Not allowed');
+      return;
+    }
 
     const user = await User.create({
       first_name,
       last_name,
       role,
       email: email.toLowerCase(),
-      password,
+      password: encryptedPassword,
     })
     res.header('Access-Control-Allow-Headers', "*");
     res.status(201).json(user);
   } catch(err) {
     console.log(err)
+  }
+})
+
+app.post("/user/login", async (req, res) => {
+  try {
+    const {email, password} = req.body;
+
+    // Validate user input
+    if (!(email && password)) {
+      res.status(400).send("All input is required");
+    }
+
+    // Validate if user exist in our database
+    const user = await User.findOne({ email });
+
+    if(user && (await bcrypt.compare(password, user.password))) {
+      const token = jwt.sign(
+        {user_id: user._id, email},
+        process.env.TOKEN_KEY,
+        {
+          expiresIn: "2h",
+        }
+      )
+
+      const us = isAdmin(token);
+
+      // save user token
+      user.token = token;
+      res.status(200).json(user);
+    } else {
+      res.status(400).send("Invalid Credentials");
+    }
+  } catch(err) {
+    console.log(err);
   }
 })
 
