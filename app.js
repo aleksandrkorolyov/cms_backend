@@ -110,7 +110,7 @@ app.get("/user/:id", async (req, res) => {
     res.header('Access-Control-Allow-Headers', "*");
     res.status(200).json(user);
   } catch(err) {
-    console.log(err)
+    res.status(404).send('not found')
   }
 })
 
@@ -121,7 +121,7 @@ app.get("/search_user_by_mail", async(req, res) => {
     res.header('Access-Control-Allow-Headers', "*");
     res.status(200).json(user);
   } catch(err) {
-    console.log(err)
+    res.status(404).send('not found')
   }
 })
 
@@ -174,7 +174,7 @@ app.delete('/user/:id/delete', auth, async (req, res) => {
       res.json('deleted')
     })
   } catch(err) {
-    console.log(err)
+    res.status(404).send('not found')
   }
 })
 
@@ -234,10 +234,18 @@ app.post("/user/login", async (req, res) => {
       user.token = token;
       res.status(200).json(user);
     } else {
-      res.status(400).send("Invalid Credentials");
+      const error = {
+      "code" : 401,
+      "error message" : "Invalid credentials"
+    }
+      res.status(401).json(error);
     }
   } catch(err) {
-    console.log(err);
+    const error = {
+      "code" : 500,
+      "error message" : "Server error"
+    }
+    res.status(500).json(error);
   }
 })
 
