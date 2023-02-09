@@ -26,7 +26,6 @@ async function isAdmin(token) {
   const userMail = decoded.email;
 
   const currentUser = await User.findOne({ email: userMail });
-
   if(currentUser.role === 'admin') {
     return(true);
   } else {
@@ -42,7 +41,7 @@ app.get("/get_user_role", async (req, res) => {
       response.isAdmin = isCurrentUserAdmin;
       res.status(200).json(response);
     } catch(err) {
-      console.error(res)
+      res.status(401).send('Not allowed');
     }
 })
 
@@ -72,7 +71,7 @@ app.get("/user_search", async (req, res) => {
   }
 })
 
-app.get("/users_batch", async (req, res) => {
+app.get("/users_batch", auth, async (req, res) => {
   try {
 
     // Fetching sorting variables from query
@@ -104,7 +103,7 @@ app.get("/users_batch", async (req, res) => {
   }
 })
 
-app.get("/user/:id", async (req, res) => {
+app.get("/user/:id", auth, async (req, res) => {
   try {
     const user = await User.findById(req.params.id)
     res.header('Access-Control-Allow-Headers', "*");
@@ -203,7 +202,7 @@ app.post("/user/add", auth, async (req, res) => {
     res.header('Access-Control-Allow-Headers', "*");
     res.status(201).json(user);
   } catch(err) {
-    console.log(err)
+    res.status(500).send('Server error');
   }
 })
 
@@ -224,7 +223,7 @@ app.post("/user/login", async (req, res) => {
         {user_id: user._id, email},
         process.env.TOKEN_KEY,
         {
-          expiresIn: "2h",
+          expiresIn: "0.5h",
         }
       )
 
