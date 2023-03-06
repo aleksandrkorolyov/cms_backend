@@ -21,6 +21,8 @@ module.exports = app;
 
 // importing user context
 const User = require("./model/user");
+const Post = require("./model/post");
+
 const { findOneAndUpdate } = require("./model/user");
 
 async function isAdmin(token) {
@@ -242,6 +244,32 @@ app.post("/user/login", version, async (req, res) => {
     }
       res.status(401).json(error);
     }
+  } catch(err) {
+    const error = {
+      "code" : 500,
+      "error message" : "Server error"
+    }
+    res.status(500).json(error);
+  }
+})
+
+app.get("/get_posts", version, async (req, res) => {
+  try{
+    const posts = await Post.find();
+    res.status(200).json(posts);
+  } catch(err) {
+    const error = {
+      "code" : 500,
+      "error message" : "Server error"
+    }
+    res.status(500).json(error);
+  }
+})
+
+app.get("/get_post_count", version, async (req, res) => {
+  try{
+    const postCount = await Post.find().count();
+    res.status(200).json(postCount);
   } catch(err) {
     const error = {
       "code" : 500,
